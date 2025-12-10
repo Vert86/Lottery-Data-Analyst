@@ -50,6 +50,8 @@ class LotteryAutomation {
 
       await this.dataStorage.savePredictions(predictions, lotteryType);
 
+      console.log(`\n✅ ${lotteryType.toUpperCase()} - API DATA SUCCESSFULLY RETRIEVED AND ANALYZED`);
+
       return {
         analysis,
         predictions,

@@ -14,49 +14,14 @@ class PurchaseInfo {
         lotteries: ['Powerball', 'Mega Millions', 'EuroMillions', 'EuroJackpot'],
         rating: 4.5,
         established: 2002
-      },
-      {
-        name: 'Lotto.com',
-        url: 'https://www.lotto.com',
-        coverage: 'US-focused (available in select states)',
-        features: [
-          'Official state lottery partner',
-          'Digital ticket storage',
-          'Instant notifications',
-          'Group play options'
-        ],
-        lotteries: ['Powerball', 'Mega Millions', 'State lotteries'],
-        rating: 4.3,
-        established: 2020
-      },
-      {
-        name: 'Jackpot.com',
-        url: 'https://www.jackpot.com',
-        coverage: 'US players (select states)',
-        features: [
-          'Licensed and regulated',
-          'Secure ticket purchases',
-          'Automatic prize collection',
-          'Lottery results tracking'
-        ],
-        lotteries: ['Powerball', 'Mega Millions', 'Multiple US state lotteries'],
-        rating: 4.2,
-        established: 2013
       }
     ];
   }
 
   static getRecommendation(lotteryType, location = 'US') {
     const services = this.getCourierServices();
-    let recommended;
-
-    if (location === 'US') {
-      recommended = services.filter(s =>
-        s.name === 'Lotto.com' || s.name === 'Jackpot.com'
-      );
-    } else {
-      recommended = services.filter(s => s.coverage.includes('International'));
-    }
+    // TheLotter supports both US and International players
+    const recommended = services.filter(s => s.coverage.includes('International'));
 
     return {
       lottery: lotteryType,
