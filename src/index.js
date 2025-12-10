@@ -63,6 +63,79 @@ class LotteryAutomation {
     }
   }
 
+  async runAllThreeLotteries(fetchLimit = 100) {
+    console.log('╔════════════════════════════════════════════════════════╗');
+    console.log('║      LOTTERY AUTOMATION - INTELLIGENT PREDICTOR        ║');
+    console.log('║    POWERBALL • MEGA MILLIONS • EUROMILLIONS ANALYZER   ║');
+    console.log('╚════════════════════════════════════════════════════════╝\n');
+
+    const results = {};
+
+    try {
+      const powerballResult = await this.runSingleLottery('powerball', fetchLimit);
+      results.powerball = powerballResult;
+
+      console.log('\n' + '═'.repeat(60) + '\n');
+
+      const megaMillionsResult = await this.runSingleLottery('megamillions', fetchLimit);
+      results.megamillions = megaMillionsResult;
+
+      console.log('\n' + '═'.repeat(60) + '\n');
+
+      const euroMillionsResult = await this.runSingleLottery('euromillions', fetchLimit);
+      results.euromillions = euroMillionsResult;
+
+      console.log('\n\n');
+      console.log('╔════════════════════════════════════════════════════════╗');
+      console.log('║             TOP 3 PICKS - ALL THREE LOTTERIES          ║');
+      console.log('╚════════════════════════════════════════════════════════╝\n');
+
+      console.log('█████████████████████████████████████████████████████████');
+      console.log('                    POWERBALL PICKS');
+      console.log('█████████████████████████████████████████████████████████\n');
+
+      results.powerball.topPicks.forEach((pick, idx) => {
+        console.log(results.powerball.generator.formatPick(pick, idx));
+      });
+
+      console.log('█████████████████████████████████████████████████████████');
+      console.log('                  MEGA MILLIONS PICKS');
+      console.log('█████████████████████████████████████████████████████████\n');
+
+      results.megamillions.topPicks.forEach((pick, idx) => {
+        console.log(results.megamillions.generator.formatPick(pick, idx));
+      });
+
+      console.log('█████████████████████████████████████████████████████████');
+      console.log('                   EUROMILLIONS PICKS');
+      console.log('█████████████████████████████████████████████████████████\n');
+
+      results.euromillions.topPicks.forEach((pick, idx) => {
+        console.log(results.euromillions.generator.formatPick(pick, idx));
+      });
+
+      console.log('╔════════════════════════════════════════════════════════╗');
+      console.log('║              WHERE TO PURCHASE TICKETS                 ║');
+      console.log('╚════════════════════════════════════════════════════════╝\n');
+
+      const purchaseInfo = PurchaseInfo.formatPurchaseInfo('all', 'International');
+      console.log(purchaseInfo);
+
+      console.log('✅ AUTOMATION COMPLETE!\n');
+      console.log('💡 Tips:');
+      console.log('  • These predictions are based on statistical analysis');
+      console.log('  • Lottery draws are random - past patterns don\'t guarantee future results');
+      console.log('  • Play responsibly and within your budget');
+      console.log('  • Good luck! 🍀\n');
+
+      return results;
+
+    } catch (error) {
+      console.error('❌ Error running automation:', error.message);
+      throw error;
+    }
+  }
+
   async runBothLotteries(fetchLimit = 100) {
     console.log('╔════════════════════════════════════════════════════════╗');
     console.log('║      LOTTERY AUTOMATION - INTELLIGENT PREDICTOR        ║');
@@ -123,8 +196,10 @@ class LotteryAutomation {
     }
   }
 
-  async run(lotteryType = 'both', fetchLimit = 100) {
-    if (lotteryType === 'both') {
+  async run(lotteryType = 'all', fetchLimit = 100) {
+    if (lotteryType === 'all') {
+      return await this.runAllThreeLotteries(fetchLimit);
+    } else if (lotteryType === 'both') {
       return await this.runBothLotteries(fetchLimit);
     } else {
       console.log('╔════════════════════════════════════════════════════════╗');
@@ -184,7 +259,7 @@ class LotteryAutomation {
 
 async function main() {
   const args = process.argv.slice(2);
-  const lotteryType = args.find(arg => !arg.startsWith('--')) || 'both';
+  const lotteryType = args.find(arg => !arg.startsWith('--')) || 'all';
   const fetchFlag = args.includes('--fetch');
   const analyzeFlag = args.includes('--analyze');
 

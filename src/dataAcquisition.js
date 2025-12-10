@@ -14,6 +14,10 @@ class DataAcquisition {
         powerball: 'https://data.ny.gov/resource/d6yy-54nr.json',
         megamillions: 'https://data.ny.gov/resource/5xaw-6ayf.json'
       },
+      euroMillions: {
+        base: 'https://euromillions.api.pedromealha.dev',
+        endpoint: '/draws'
+      },
       lotteryData: {
         base: 'https://api.lotterydata.io/v1',
         powerball: '/powerball/draws',
@@ -155,14 +159,51 @@ class DataAcquisition {
   }
 
   /**
-   * Fetch from USA Mega (web scraping fallback)
+   * Fetch from EuroMillions API - FREE, no API key required
    */
-  async fetchFromUSAMega(lotteryType, limit = 100) {
-    console.log(`📡 Attempting to fetch from USA Mega (fallback)...`);
+  async fetchFromEuroMillions(limit = 100) {
+    const url = `${this.apiSources.euroMillions.base}${this.apiSources.euroMillions.endpoint}`;
 
-    // This would require web scraping, which is more complex
-    // For now, we'll throw an error to move to next fallback
-    throw new Error('USA Mega scraping not yet implemented');
+    console.log(`📡 Attempting to fetch from EuroMillions API...`);
+
+    try {
+      const response = await axios.get(url, {
+        params: {
+          limit: limit
+        },
+        timeout: 15000,
+        headers: {
+          'Accept': 'application/json'
+        }
+      });
+
+      console.log(`✓ Successfully fetched ${response.data.length} records from EuroMillions API`);
+      return this.transformEuroMillionsData(response.data);
+    } catch (error) {
+      console.log(`✗ EuroMillions API fetch failed: ${error.message}`);
+      throw error;
+    }
+  }
+
+  /**
+   * Transform EuroMillions API data to our standard format
+   */
+  transformEuroMillionsData(data) {
+    const draws = data.map(draw => {
+      return {
+        date: draw.date,
+        numbers: draw.numbers.sort((a, b) => a - b),
+        stars: draw.stars.sort((a, b) => a - b),
+        jackpot: draw.jackpot
+      };
+    });
+
+    return {
+      lottery: 'euromillions',
+      source: 'EuroMillions API (pedromealha.dev)',
+      count: draws.length,
+      draws: draws
+    };
   }
 
   /**
@@ -172,6 +213,32 @@ class DataAcquisition {
     console.log(`\n🎯 Fetching historical data for ${lotteryType.toUpperCase()}...`);
     console.log(`📊 Requested: ${limit} most recent draws\n`);
 
+    // EuroMillions has its own API source
+    if (lotteryType === 'euromillions') {
+      const fetchStrategies = [
+        {
+          name: 'EuroMillions API (FREE)',
+          method: () => this.fetchFromEuroMillions(limit)
+        },
+        {
+          name: 'Sample Data (Last Resort)',
+          method: () => Promise.resolve(this.generateSampleData(lotteryType, limit))
+        }
+      ];
+
+      for (const strategy of fetchStrategies) {
+        try {
+          const data = await strategy.method();
+          console.log(`✓ Data acquisition successful via ${strategy.name}\n`);
+          return data;
+        } catch (error) {
+          console.log(`✗ ${strategy.name} failed: ${error.message}`);
+          continue;
+        }
+      }
+    }
+
+    // US Lotteries (Powerball, Mega Millions)
     const fetchStrategies = [
       {
         name: 'NY.gov Open Data (FREE)',
@@ -243,6 +310,16 @@ class DataAcquisition {
           numbers: numbers.sort((a, b) => a - b),
           megaball: bonusNumber,
           jackpot: Math.floor(Math.random() * 400000000) + 15000000
+        });
+      } else if (lotteryType === 'euromillions') {
+        maxNumber = 50;
+        const stars = this.generateUniqueNumbers(2, 12);
+        numbers = this.generateUniqueNumbers(5, maxNumber);
+        draws.push({
+          date: drawDate.toISOString().split('T')[0],
+          numbers: numbers.sort((a, b) => a - b),
+          stars: stars.sort((a, b) => a - b),
+          jackpot: Math.floor(Math.random() * 200000000) + 17000000
         });
       } else {
         maxNumber = 50;

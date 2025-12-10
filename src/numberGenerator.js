@@ -22,8 +22,9 @@ class NumberGenerator {
       euromillions: {
         mainCount: 5,
         mainMax: 50,
-        bonusMax: 12,
-        bonusName: 'Lucky Star'
+        starsCount: 2,
+        starsMax: 12,
+        bonusName: 'Lucky Stars'
       }
     };
 
@@ -157,15 +158,36 @@ class NumberGenerator {
     return this.weightedRandomSelection(candidates, weights, 1)[0];
   }
 
+  generateStars() {
+    if (!this.config.starsMax || !this.analysis.stars) {
+      return null;
+    }
+
+    const hotStars = this.analysis.stars.hot.slice(0, 6).map(h => h.number);
+    const overdueStars = this.analysis.stars.overdue.slice(0, 6).map(o => o.number);
+
+    const candidates = [...new Set([...hotStars, ...overdueStars])];
+    const weights = candidates.map(num => {
+      let weight = 1;
+      if (hotStars.includes(num)) weight += 2;
+      if (overdueStars.includes(num)) weight += 1;
+      return weight;
+    });
+
+    return this.weightedRandomSelection(candidates, weights, this.config.starsCount);
+  }
+
   generateTopPicks(count = 3) {
     const picks = [];
+    const isEuroMillions = this.lotteryType === 'euromillions';
 
     const balanced = this.generateBalancedNumbers();
     picks.push({
       strategy: 'Balanced Mix',
       description: 'Combines hot, cold, and overdue numbers with weighted selection',
       numbers: balanced,
-      bonus: this.generateBonusNumber(),
+      bonus: isEuroMillions ? null : this.generateBonusNumber(),
+      stars: isEuroMillions ? this.generateStars() : null,
       metrics: {
         oddEven: this.ensureOddEvenBalance(balanced),
         highLow: this.ensureHighLowBalance(balanced)
@@ -178,7 +200,8 @@ class NumberGenerator {
         strategy: 'Hot Numbers Focus',
         description: 'Prioritizes the most frequently drawn numbers',
         numbers: hotBiased,
-        bonus: this.generateBonusNumber(),
+        bonus: isEuroMillions ? null : this.generateBonusNumber(),
+        stars: isEuroMillions ? this.generateStars() : null,
         metrics: {
           oddEven: this.ensureOddEvenBalance(hotBiased),
           highLow: this.ensureHighLowBalance(hotBiased)
@@ -192,7 +215,8 @@ class NumberGenerator {
         strategy: 'Overdue Numbers',
         description: 'Focuses on numbers that haven\'t appeared recently',
         numbers: overdueBiased,
-        bonus: this.generateBonusNumber(),
+        bonus: isEuroMillions ? null : this.generateBonusNumber(),
+        stars: isEuroMillions ? this.generateStars() : null,
         metrics: {
           oddEven: this.ensureOddEvenBalance(overdueBiased),
           highLow: this.ensureHighLowBalance(overdueBiased)
@@ -204,7 +228,13 @@ class NumberGenerator {
   }
 
   formatPick(pick, index) {
-    const bonusText = pick.bonus ? ` + ${this.config.bonusName}: ${pick.bonus}` : '';
+    let bonusText = '';
+    if (pick.bonus) {
+      bonusText = ` + ${this.config.bonusName}: ${pick.bonus}`;
+    } else if (pick.stars) {
+      bonusText = ` + ${this.config.bonusName}: ${pick.stars.join(', ')}`;
+    }
+
     return `
 Pick #${index + 1}: ${pick.strategy}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

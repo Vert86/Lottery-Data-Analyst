@@ -71,9 +71,18 @@ class PurchaseInfo {
 
     let output = '';
 
-    if (lotteryType === 'both') {
-      output += 'RECOMMENDED SERVICES FOR BOTH POWERBALL & MEGA MILLIONS:\n';
+    if (lotteryType === 'all' || lotteryType === 'both') {
+      const title = lotteryType === 'all' ?
+        'RECOMMENDED SERVICES FOR ALL THREE LOTTERIES:' :
+        'RECOMMENDED SERVICES FOR BOTH POWERBALL & MEGA MILLIONS:';
+
+      output += title + '\n';
       output += '───────────────────────────────────────────────────────────\n\n';
+
+      if (lotteryType === 'all') {
+        output += '🌍 For EuroMillions (International Players):\n';
+        output += '   TheLotter is HIGHLY RECOMMENDED for international access\n\n';
+      }
 
       services.forEach((service, idx) => {
         output += `${idx + 1}. ${service.name} ⭐ ${service.rating}/5\n`;
@@ -86,6 +95,29 @@ class PurchaseInfo {
         });
         output += '\n';
       });
+    } else if (lotteryType === 'euromillions') {
+      output += '\n';
+      output += '═══════════════════════════════════════════════════════════\n';
+      output += '           WHERE TO PURCHASE YOUR TICKETS\n';
+      output += '═══════════════════════════════════════════════════════════\n\n';
+      output += `Lottery: ${lotteryType.toUpperCase()}\n`;
+      output += `Location: International\n\n`;
+
+      output += 'HIGHLY RECOMMENDED SERVICE:\n';
+      output += '───────────────────────────────────────────────────────────\n\n';
+
+      const theLotter = services.find(s => s.name === 'TheLotter');
+      if (theLotter) {
+        output += `1. ${theLotter.name} ⭐ ${theLotter.rating}/5 (BEST FOR EUROMILLIONS)\n`;
+        output += `   Website: ${theLotter.url}\n`;
+        output += `   Coverage: ${theLotter.coverage}\n`;
+        output += `   Established: ${theLotter.established}\n\n`;
+        output += `   Features:\n`;
+        theLotter.features.forEach(feature => {
+          output += `   • ${feature}\n`;
+        });
+        output += '\n';
+      }
     } else {
       const info = this.getRecommendation(lotteryType, location);
 

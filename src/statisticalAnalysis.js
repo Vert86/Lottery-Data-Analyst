@@ -9,7 +9,14 @@ class StatisticalAnalysis {
     const frequency = {};
 
     this.draws.forEach(draw => {
-      const numbers = numberSet === 'main' ? draw.numbers : [draw.powerball || draw.megaball];
+      let numbers;
+      if (numberSet === 'main') {
+        numbers = draw.numbers;
+      } else if (numberSet === 'stars') {
+        numbers = draw.stars || [];
+      } else {
+        numbers = [draw.powerball || draw.megaball];
+      }
 
       if (numbers) {
         numbers.forEach(num => {
@@ -168,9 +175,11 @@ class StatisticalAnalysis {
 
   generateFullAnalysis() {
     const maxMainNumber = this.lotteryType === 'powerball' ? 69 :
-                         this.lotteryType === 'megamillions' ? 70 : 50;
+                         this.lotteryType === 'megamillions' ? 70 :
+                         this.lotteryType === 'euromillions' ? 50 : 50;
     const maxBonusNumber = this.lotteryType === 'powerball' ? 26 :
                           this.lotteryType === 'megamillions' ? 25 : null;
+    const maxStarsNumber = this.lotteryType === 'euromillions' ? 12 : null;
 
     const analysis = {
       lottery: this.lotteryType,
@@ -192,11 +201,21 @@ class StatisticalAnalysis {
       }
     };
 
+    // US Lotteries (Powerball, Mega Millions)
     if (maxBonusNumber) {
       analysis.bonusNumber = {
         hot: this.getHotNumbers(10, 'bonus'),
         cold: this.getColdNumbers(10, 'bonus'),
         overdue: this.getOverdueNumbers(maxBonusNumber, 'bonus')
+      };
+    }
+
+    // EuroMillions Stars
+    if (maxStarsNumber) {
+      analysis.stars = {
+        hot: this.getHotNumbers(10, 'stars'),
+        cold: this.getColdNumbers(10, 'stars'),
+        overdue: this.getOverdueNumbers(maxStarsNumber, 'stars')
       };
     }
 
