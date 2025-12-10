@@ -1,0 +1,19 @@
+{
+  "name": "lottery-automation",
+  "version": "1.0.0",
+  "description": "Automated lottery data analysis and number generation system",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "analyze": "node src/index.js --analyze",
+    "fetch": "node src/index.js --fetch"
+  },
+  "keywords": ["lottery", "automation", "analysis", "prediction"],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "axios": "^1.6.0",
+    "dotenv": "^16.3.1",
+    "node-fetch": "^3.3.2"
+  }
+}
