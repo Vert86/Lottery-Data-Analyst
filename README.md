@@ -58,6 +58,35 @@ npm run fetch
 npm run analyze
 ```
 
+### View Draw Schedules
+```bash
+node src/index.js --schedule
+```
+
+Shows lottery draw schedules in your local timezone and recommends when to run the automation next.
+
+## ⏰ Draw Schedule & Recommendations
+
+The system automatically tracks when lottery draws occur and recommends optimal times to run:
+
+### Lottery Draw Times (Taipei Time - UTC+8)
+- **Powerball**: Monday, Wednesday, Saturday at ~10:59 AM
+- **Mega Millions**: Tuesday, Friday at ~11:00 AM
+- **EuroMillions**: Tuesday, Friday at ~4:30 AM
+
+### Recommended Automation Schedule
+Run **twice weekly** to capture all lottery draws:
+1. **Wednesday** - Captures Monday Powerball + Tuesday Mega Millions & EuroMillions
+2. **Saturday** - Captures Wednesday Powerball + Friday Mega Millions & EuroMillions
+
+### Configure Your Timezone
+Set your timezone in `.env`:
+```bash
+USER_TIMEZONE=Asia/Taipei
+```
+
+After each run, the system shows when fresh data will be available next!
+
 ## 🔌 Data Sources
 
 The system uses a **multi-tier fallback architecture** for maximum reliability:
@@ -103,10 +132,11 @@ Balance: ✓ Odd/Even: 1/4, High/Low: 1/4
 
 ## 🛒 Purchase Locations
 
-Recommended lottery courier services:
-- **TheLotter.com** - International coverage (60+ lotteries)
-- **Lotto.com** - US official state lottery partner
-- **Jackpot.com** - Licensed US service with auto prize collection
+Recommended lottery courier service:
+- **TheLotter.com** - International coverage (60+ lotteries worldwide)
+  - Best option for international players
+  - Supports Powerball, Mega Millions, and EuroMillions
+  - Automatic ticket scanning and notifications
 
 ## 🏗️ System Architecture
 
@@ -117,6 +147,7 @@ src/
 ├── numberGenerator.js     # Smart number generation algorithms
 ├── dataStorage.js        # JSON-based data persistence
 ├── purchaseInfo.js       # Courier service information
+├── drawSchedule.js       # Draw schedules and next run recommendations
 └── index.js             # Main orchestration and CLI
 ```
 

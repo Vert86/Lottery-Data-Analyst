@@ -3,6 +3,7 @@ const StatisticalAnalysis = require('./statisticalAnalysis');
 const NumberGenerator = require('./numberGenerator');
 const DataStorage = require('./dataStorage');
 const PurchaseInfo = require('./purchaseInfo');
+const DrawSchedule = require('./drawSchedule');
 require('dotenv').config();
 
 class LotteryAutomation {
@@ -11,6 +12,8 @@ class LotteryAutomation {
     this.apiUrl = process.env.LOTTERY_API_URL;
     this.dataAcquisition = new DataAcquisition(this.apiKey, this.apiUrl);
     this.dataStorage = new DataStorage();
+    this.drawSchedule = new DrawSchedule();
+    this.userTimezone = process.env.USER_TIMEZONE || 'Asia/Taipei'; // Default to Taipei
   }
 
   async runSingleLottery(lotteryType, fetchLimit = 100) {
@@ -51,6 +54,17 @@ class LotteryAutomation {
       await this.dataStorage.savePredictions(predictions, lotteryType);
 
       console.log(`\n✅ ${lotteryType.toUpperCase()} - API DATA SUCCESSFULLY RETRIEVED AND ANALYZED`);
+
+      // Show when to run next
+      const recommendation = this.drawSchedule.getRecommendedRunTime(
+        data.fetchedAt,
+        lotteryType,
+        this.userTimezone
+      );
+
+      if (recommendation) {
+        console.log(`\n⏰ ${recommendation.message}`);
+      }
 
       return {
         analysis,
@@ -129,6 +143,9 @@ class LotteryAutomation {
       console.log('  • Lottery draws are random - past patterns don\'t guarantee future results');
       console.log('  • Play responsibly and within your budget');
       console.log('  • Good luck! 🍀\n');
+
+      // Show next recommended run times for all lotteries
+      this.showNextRunSchedule(['powerball', 'megamillions', 'euromillions']);
 
       return results;
 
@@ -257,6 +274,65 @@ class LotteryAutomation {
     console.log('✓ Analysis complete');
     return analysis;
   }
+
+  /**
+   * Show next recommended run schedule for specified lotteries
+   */
+  async showNextRunSchedule(lotteries) {
+    console.log('\n╔════════════════════════════════════════════════════════╗');
+    console.log('║           WHEN TO RUN NEXT (Your Local Time)          ║');
+    console.log(`║           Timezone: ${this.userTimezone.padEnd(35)} ║`);
+    console.log('╚════════════════════════════════════════════════════════╝\n');
+
+    for (const lotteryType of lotteries) {
+      const data = await this.dataAcquisition.loadData(lotteryType);
+      const recommendation = this.drawSchedule.getRecommendedRunTime(
+        data?.fetchedAt,
+        lotteryType,
+        this.userTimezone
+      );
+
+      if (recommendation) {
+        console.log(`${recommendation.lotteryName.toUpperCase()}`);
+        console.log('─'.repeat(60));
+        console.log(`Last Updated: ${recommendation.lastFetchedAt}`);
+        console.log(`Draw Days: ${recommendation.drawDays}`);
+        console.log(`${recommendation.message}\n`);
+      }
+    }
+
+    // Show optimal weekly schedule
+    const optimalSchedule = this.drawSchedule.getOptimalWeeklySchedule(this.userTimezone);
+    console.log('📆 OPTIMAL WEEKLY SCHEDULE');
+    console.log('─'.repeat(60));
+    console.log(`${optimalSchedule.recommendation}\n`);
+
+    optimalSchedule.optimalDays.forEach((day, idx) => {
+      console.log(`${idx + 1}. ${day.day} - ${day.reason}`);
+      console.log(`   Lotteries: ${day.lotteries.join(', ')}\n`);
+    });
+
+    console.log('💡 TIP: Run "node src/index.js all" on these days for fresh data!\n');
+  }
+
+  /**
+   * Show draw schedules only
+   */
+  showSchedules() {
+    const summary = this.drawSchedule.formatScheduleSummary(this.userTimezone);
+    console.log(summary);
+
+    const optimalSchedule = this.drawSchedule.getOptimalWeeklySchedule(this.userTimezone);
+    console.log('📆 RECOMMENDED AUTOMATION SCHEDULE');
+    console.log('─'.repeat(60));
+    console.log(`${optimalSchedule.recommendation}\n`);
+
+    optimalSchedule.optimalDays.forEach((day, idx) => {
+      console.log(`${idx + 1}. ${day.day}`);
+      console.log(`   ${day.reason}`);
+      console.log(`   Covers: ${day.lotteries.join(', ')}\n`);
+    });
+  }
 }
 
 async function main() {
@@ -264,11 +340,14 @@ async function main() {
   const lotteryType = args.find(arg => !arg.startsWith('--')) || 'all';
   const fetchFlag = args.includes('--fetch');
   const analyzeFlag = args.includes('--analyze');
+  const scheduleFlag = args.includes('--schedule');
 
   const automation = new LotteryAutomation();
 
   try {
-    if (fetchFlag) {
+    if (scheduleFlag) {
+      automation.showSchedules();
+    } else if (fetchFlag) {
       await automation.fetchOnly(lotteryType);
     } else if (analyzeFlag) {
       await automation.analyzeOnly(lotteryType);
