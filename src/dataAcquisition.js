@@ -9,6 +9,14 @@ class DataAcquisition {
     this.dataDir = path.join(__dirname, '../data');
 
     // Multiple API sources for redundancy
+    // Draws before these dates used different ball pools (e.g. Powerball 5/59 + 1/35).
+    // Mixing formats corrupts frequency/cold-number analysis, so older draws are filtered out.
+    this.formatStartDates = {
+      powerball: '2015-01-18',    // 5/69 + 1/26 format start
+      megamillions: '2017-10-31', // 5/70 + 1/25 format start
+      euromillions: '2016-09-27'  // 2/12 Lucky Stars format start
+    };
+
     this.apiSources = {
       nyGov: {
         powerball: 'https://data.ny.gov/resource/d6yy-54nr.json',
@@ -190,10 +198,16 @@ class DataAcquisition {
    */
   transformEuroMillionsData(data) {
     const draws = data.map(draw => {
+      // The API returns dates in inconsistent formats ('2004-02-13' or HTTP-date);
+      // normalize to ISO so format filtering and date comparisons work.
+      const parsed = new Date(draw.date);
+      const iso = isNaN(parsed.getTime())
+        ? String(draw.date).slice(0, 10)
+        : parsed.toISOString().slice(0, 10);
       return {
-        date: draw.date,
-        numbers: draw.numbers.sort((a, b) => a - b),
-        stars: draw.stars.sort((a, b) => a - b),
+        date: iso,
+        numbers: draw.numbers.map(Number).sort((a, b) => a - b),
+        stars: (draw.stars || []).map(Number).sort((a, b) => a - b),
         jackpot: draw.jackpot
       };
     });
@@ -230,7 +244,7 @@ class DataAcquisition {
         try {
           const data = await strategy.method();
           console.log(`✓ Data acquisition successful via ${strategy.name}\n`);
-          return data;
+          return this.filterToCurrentFormat(data);
         } catch (error) {
           console.log(`✗ ${strategy.name} failed: ${error.message}`);
           continue;
@@ -265,7 +279,7 @@ class DataAcquisition {
       try {
         const data = await strategy.method();
         console.log(`✓ Data acquisition successful via ${strategy.name}\n`);
-        return data;
+        return this.filterToCurrentFormat(data);
       } catch (error) {
         console.log(`✗ ${strategy.name} failed: ${error.message}`);
         continue;
@@ -273,6 +287,23 @@ class DataAcquisition {
     }
 
     throw new Error('All data acquisition strategies failed');
+  }
+
+  /**
+   * Drop draws that predate the current number format.
+   */
+  filterToCurrentFormat(data) {
+    const cutoff = this.formatStartDates[data.lottery];
+    if (!cutoff || !data.draws) return data;
+
+    const filtered = data.draws.filter(d => d.date >= cutoff);
+    const removed = data.draws.length - filtered.length;
+    if (removed > 0) {
+      console.log(`📐 Dropped ${removed} pre-${cutoff} draws (older number format, not comparable)`);
+      data.draws = filtered;
+      data.count = filtered.length;
+    }
+    return data;
   }
 
   /**

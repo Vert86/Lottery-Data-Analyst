@@ -37,30 +37,24 @@ class NumberGenerator {
   }
 
   weightedRandomSelection(numbers, weights, count) {
-    const selected = new Set();
-    const totalWeight = weights.reduce((sum, w) => sum + w, 0);
+    // Weighted sampling WITHOUT replacement: the pool is renormalized after
+    // each pick so weights actually mean what they say.
+    const pool = numbers.map((n, i) => ({ n, w: weights[i] }));
+    const selected = [];
 
-    while (selected.size < count) {
-      let random = Math.random() * totalWeight;
-      let cumulative = 0;
-
-      for (let i = 0; i < numbers.length; i++) {
-        cumulative += weights[i];
-        if (random <= cumulative && !selected.has(numbers[i])) {
-          selected.add(numbers[i]);
-          break;
-        }
+    while (selected.length < count && pool.length > 0) {
+      const total = pool.reduce((sum, p) => sum + p.w, 0);
+      let r = Math.random() * total;
+      let idx = pool.length - 1;
+      for (let i = 0; i < pool.length; i++) {
+        r -= pool[i].w;
+        if (r <= 0) { idx = i; break; }
       }
-
-      if (selected.size < count && selected.size < numbers.length) {
-        const remaining = numbers.filter(n => !selected.has(n));
-        if (remaining.length > 0) {
-          selected.add(remaining[Math.floor(Math.random() * remaining.length)]);
-        }
-      }
+      selected.push(pool[idx].n);
+      pool.splice(idx, 1);
     }
 
-    return Array.from(selected).sort((a, b) => a - b);
+    return selected.sort((a, b) => a - b);
   }
 
   generateBalancedNumbers() {

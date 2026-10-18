@@ -62,7 +62,7 @@ class StatisticalAnalysis {
 
       if (numbers) {
         numbers.forEach(num => {
-          if (!lastSeen[num]) {
+          if (lastSeen[num] === undefined) {
             lastSeen[num] = index;
           }
         });
@@ -71,7 +71,7 @@ class StatisticalAnalysis {
 
     const overdue = [];
     for (let i = 1; i <= maxNumber; i++) {
-      const lastSeenIndex = lastSeen[i] || this.draws.length;
+      const lastSeenIndex = lastSeen[i] !== undefined ? lastSeen[i] : this.draws.length;
       overdue.push({
         number: i,
         drawsSinceLastSeen: lastSeenIndex,
@@ -125,7 +125,7 @@ class StatisticalAnalysis {
     const pairs = {};
 
     this.draws.forEach(draw => {
-      const numbers = draw.numbers.sort((a, b) => a - b);
+      const numbers = [...draw.numbers].sort((a, b) => a - b);
 
       for (let i = 0; i < numbers.length; i++) {
         for (let j = i + 1; j < numbers.length; j++) {
@@ -150,7 +150,7 @@ class StatisticalAnalysis {
     const triplets = {};
 
     this.draws.forEach(draw => {
-      const numbers = draw.numbers.sort((a, b) => a - b);
+      const numbers = [...draw.numbers].sort((a, b) => a - b);
 
       for (let i = 0; i < numbers.length; i++) {
         for (let j = i + 1; j < numbers.length; j++) {

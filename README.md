@@ -110,6 +110,49 @@ The system uses a **multi-tier fallback architecture** for maximum reliability:
 - Randomly generated for testing
 - Used only if all APIs fail
 
+## 🔬 What Actually Works (Validated) vs What Doesn't
+
+This project started as a "pattern predictor". A full statistical audit of real draw data
+(Powerball 1,495 draws, Mega Millions 936, EuroMillions 1,050, current formats only)
+showed that **no pattern predicts future draws**:
+
+- Number uniformity: chi-square z between -0.6 and 0.0 (perfectly uniform)
+- Hot-number persistence: z between +0.3 and +1.3 (noise)
+- Overdue numbers walk-forward: z between +0.1 and +1.5 (noise)
+- Walk-forward backtest of hot/overdue/balanced strategies: identical hit rate to random tickets
+
+The legacy pattern-based picks are kept for comparison only.
+
+**What IS real: the anti-popularity edge.** You cannot improve P(win), but you can improve
+the expected payout given a win. Validated on EuroMillions 2016-2026 (the only source with
+per-tier winner counts and prize amounts):
+
+- Prize per winner falls monotonically as winning combos contain more 1-31 (birthday) numbers:
+  EUR 4.97 (0-1 low numbers drawn) -> EUR 3.62 (5 low numbers drawn), correlation -0.672
+- Anti-popularity tickets collected ~6-7% more per win than uniform tickets in a
+  direct per-draw backtest; the effect is larger at jackpot level
+- The tool now leads with an anti-popularity pick: skewed to 32+ (un-birthday-able),
+  avoiding sequences, patterns, and the previous draw's numbers
+
+Run the full validation yourself:
+
+```bash
+node scripts/validate-popularity.js
+```
+
+## 💰 Expected Value Gate
+
+Lottery tickets are negative-EV almost always. Check the least-bad time to play:
+
+```bash
+node src/index.js powerball --jackpot 800    # $800M advertised jackpot
+node src/index.js euromillions --jackpot 240 # EUR 240M jackpot
+```
+
+This prints the full EV breakdown: lump-sum + tax discount, Poisson jackpot-split model,
+lower-tier EV, and the honest verdict. Even a $1.2B Powerball jackpot is around -20% EV
+per ticket after cash discount and taxes.
+
 ## 🎯 Example Output
 
 When you run the automation, you'll get:

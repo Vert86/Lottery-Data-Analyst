@@ -3,6 +3,8 @@ const StatisticalAnalysis = require('./statisticalAnalysis');
 const NumberGenerator = require('./numberGenerator');
 const DataStorage = require('./dataStorage');
 const PurchaseInfo = require('./purchaseInfo');
+const UnpopularityGenerator = require('./unpopularityGenerator');
+const EvCalculator = require('./evCalculator');
 const DrawSchedule = require('./drawSchedule');
 require('dotenv').config();
 
@@ -16,7 +18,7 @@ class LotteryAutomation {
     this.userTimezone = process.env.USER_TIMEZONE || 'Asia/Taipei'; // Default to Taipei
   }
 
-  async runSingleLottery(lotteryType, fetchLimit = 100) {
+  async runSingleLottery(lotteryType, fetchLimit = 3000, jackpot = null) {
     try {
       console.log(`🎯 Target Lottery: ${lotteryType.toUpperCase()}\n`);
 
@@ -43,11 +45,25 @@ class LotteryAutomation {
       const generator = new NumberGenerator(analysis, lotteryType);
       const topPicks = generator.generateTopPicks(3);
 
+      // Anti-popularity pick: the only optimization with a validated edge
+      // (higher payout per win, NOT higher win odds - see scripts/validate-popularity.js)
+      const unpopularityGenerator = new UnpopularityGenerator(analysis, lotteryType);
+      const lastDrawNumbers = (data.draws && data.draws[0] && data.draws[0].numbers) ? data.draws[0].numbers : [];
+      const unpopularityPick = unpopularityGenerator.generatePick(lastDrawNumbers);
+
+      // Optional EV gate: --jackpot <millions>
+      let evSummary = null;
+      if (jackpot && jackpot > 0) {
+        const evCalc = new EvCalculator(lotteryType);
+        evSummary = evCalc.estimateEv(jackpot * 1e6);
+      }
+
       const predictions = {
         lottery: lotteryType,
         generatedAt: new Date().toISOString(),
         basedOnDraws: analysis.totalDraws,
         dateRange: analysis.dateRange,
+        recommendedPick: unpopularityPick,
         picks: topPicks
       };
 
@@ -66,11 +82,18 @@ class LotteryAutomation {
         console.log(`\n⏰ ${recommendation.message}`);
       }
 
+      if (evSummary) {
+        const evCalc = new EvCalculator(lotteryType);
+        console.log(evCalc.formatEv(evSummary));
+      }
+
       return {
         analysis,
         predictions,
         topPicks,
-        generator
+        generator,
+        unpopularityPick,
+        unpopularityGenerator
       };
 
     } catch (error) {
@@ -79,7 +102,7 @@ class LotteryAutomation {
     }
   }
 
-  async runAllThreeLotteries(fetchLimit = 100) {
+  async runAllThreeLotteries(fetchLimit = 3000, jackpot = null) {
     console.log('╔════════════════════════════════════════════════════════╗');
     console.log('║      LOTTERY AUTOMATION - INTELLIGENT PREDICTOR        ║');
     console.log('║    POWERBALL • MEGA MILLIONS • EUROMILLIONS ANALYZER   ║');
@@ -88,17 +111,17 @@ class LotteryAutomation {
     const results = {};
 
     try {
-      const powerballResult = await this.runSingleLottery('powerball', fetchLimit);
+      const powerballResult = await this.runSingleLottery('powerball', fetchLimit, jackpot);
       results.powerball = powerballResult;
 
       console.log('\n' + '═'.repeat(60) + '\n');
 
-      const megaMillionsResult = await this.runSingleLottery('megamillions', fetchLimit);
+      const megaMillionsResult = await this.runSingleLottery('megamillions', fetchLimit, jackpot);
       results.megamillions = megaMillionsResult;
 
       console.log('\n' + '═'.repeat(60) + '\n');
 
-      const euroMillionsResult = await this.runSingleLottery('euromillions', fetchLimit);
+      const euroMillionsResult = await this.runSingleLottery('euromillions', fetchLimit, jackpot);
       results.euromillions = euroMillionsResult;
 
       console.log('\n\n');
@@ -110,25 +133,19 @@ class LotteryAutomation {
       console.log('                    POWERBALL PICKS');
       console.log('█████████████████████████████████████████████████████████\n');
 
-      results.powerball.topPicks.forEach((pick, idx) => {
-        console.log(results.powerball.generator.formatPick(pick, idx));
-      });
+      this.printPicks(results.powerball);
 
       console.log('█████████████████████████████████████████████████████████');
       console.log('                  MEGA MILLIONS PICKS');
       console.log('█████████████████████████████████████████████████████████\n');
 
-      results.megamillions.topPicks.forEach((pick, idx) => {
-        console.log(results.megamillions.generator.formatPick(pick, idx));
-      });
+      this.printPicks(results.megamillions);
 
       console.log('█████████████████████████████████████████████████████████');
       console.log('                   EUROMILLIONS PICKS');
       console.log('█████████████████████████████████████████████████████████\n');
 
-      results.euromillions.topPicks.forEach((pick, idx) => {
-        console.log(results.euromillions.generator.formatPick(pick, idx));
-      });
+      this.printPicks(results.euromillions);
 
       console.log('╔════════════════════════════════════════════════════════╗');
       console.log('║              WHERE TO PURCHASE TICKETS                 ║');
@@ -139,7 +156,7 @@ class LotteryAutomation {
 
       console.log('✅ AUTOMATION COMPLETE!\n');
       console.log('💡 Tips:');
-      console.log('  • These predictions are based on statistical analysis');
+      console.log('  • Draws are random: no tool can predict winning numbers - including this one');
       console.log('  • Lottery draws are random - past patterns don\'t guarantee future results');
       console.log('  • Play responsibly and within your budget');
       console.log('  • Good luck! 🍀\n');
@@ -155,7 +172,7 @@ class LotteryAutomation {
     }
   }
 
-  async runBothLotteries(fetchLimit = 100) {
+  async runBothLotteries(fetchLimit = 3000, jackpot = null) {
     console.log('╔════════════════════════════════════════════════════════╗');
     console.log('║      LOTTERY AUTOMATION - INTELLIGENT PREDICTOR        ║');
     console.log('║           POWERBALL & MEGA MILLIONS ANALYZER           ║');
@@ -164,12 +181,12 @@ class LotteryAutomation {
     const results = {};
 
     try {
-      const powerballResult = await this.runSingleLottery('powerball', fetchLimit);
+      const powerballResult = await this.runSingleLottery('powerball', fetchLimit, jackpot);
       results.powerball = powerballResult;
 
       console.log('\n' + '═'.repeat(60) + '\n');
 
-      const megaMillionsResult = await this.runSingleLottery('megamillions', fetchLimit);
+      const megaMillionsResult = await this.runSingleLottery('megamillions', fetchLimit, jackpot);
       results.megamillions = megaMillionsResult;
 
       console.log('\n\n');
@@ -181,17 +198,13 @@ class LotteryAutomation {
       console.log('                    POWERBALL PICKS');
       console.log('█████████████████████████████████████████████████████████\n');
 
-      results.powerball.topPicks.forEach((pick, idx) => {
-        console.log(results.powerball.generator.formatPick(pick, idx));
-      });
+      this.printPicks(results.powerball);
 
       console.log('█████████████████████████████████████████████████████████');
       console.log('                  MEGA MILLIONS PICKS');
       console.log('█████████████████████████████████████████████████████████\n');
 
-      results.megamillions.topPicks.forEach((pick, idx) => {
-        console.log(results.megamillions.generator.formatPick(pick, idx));
-      });
+      this.printPicks(results.megamillions);
 
       console.log('╔════════════════════════════════════════════════════════╗');
       console.log('║              WHERE TO PURCHASE TICKETS                 ║');
@@ -202,7 +215,7 @@ class LotteryAutomation {
 
       console.log('✅ AUTOMATION COMPLETE!\n');
       console.log('💡 Tips:');
-      console.log('  • These predictions are based on statistical analysis');
+      console.log('  • Draws are random: no tool can predict winning numbers - including this one');
       console.log('  • Lottery draws are random - past patterns don\'t guarantee future results');
       console.log('  • Play responsibly and within your budget');
       console.log('  • Good luck! 🍀\n');
@@ -215,26 +228,24 @@ class LotteryAutomation {
     }
   }
 
-  async run(lotteryType = 'all', fetchLimit = 100) {
+  async run(lotteryType = 'all', fetchLimit = 3000, jackpot = null) {
     if (lotteryType === 'all') {
-      return await this.runAllThreeLotteries(fetchLimit);
+      return await this.runAllThreeLotteries(fetchLimit, jackpot);
     } else if (lotteryType === 'both') {
-      return await this.runBothLotteries(fetchLimit);
+      return await this.runBothLotteries(fetchLimit, jackpot);
     } else {
       console.log('╔════════════════════════════════════════════════════════╗');
       console.log('║      LOTTERY AUTOMATION - INTELLIGENT PREDICTOR        ║');
       console.log('╚════════════════════════════════════════════════════════╝\n');
 
-      const result = await this.runSingleLottery(lotteryType, fetchLimit);
+      const result = await this.runSingleLottery(lotteryType, fetchLimit, jackpot);
 
       console.log('\n');
       console.log('═══════════════════════════════════════════════════════');
       console.log('           TOP 3 RECOMMENDED NUMBER PICKS');
       console.log('═══════════════════════════════════════════════════════');
 
-      result.topPicks.forEach((pick, idx) => {
-        console.log(result.generator.formatPick(pick, idx));
-      });
+      this.printPicks(result);
 
       console.log('📍 Purchase Information...');
       console.log('─'.repeat(60));
@@ -243,7 +254,7 @@ class LotteryAutomation {
 
       console.log('✅ AUTOMATION COMPLETE!\n');
       console.log('💡 Tips:');
-      console.log('  • These predictions are based on statistical analysis');
+      console.log('  • Draws are random: no tool can predict winning numbers - including this one');
       console.log('  • Lottery draws are random - past patterns don\'t guarantee future results');
       console.log('  • Play responsibly and within your budget');
       console.log('  • Good luck! 🍀\n');
@@ -252,7 +263,23 @@ class LotteryAutomation {
     }
   }
 
-  async fetchOnly(lotteryType = 'powerball', limit = 100) {
+  /**
+   * Print the validated anti-popularity pick first, then the legacy
+   * pattern-based picks (kept for comparison - they have no predictive edge).
+   */
+  printPicks(result) {
+    if (result.unpopularityPick) {
+      console.log(result.unpopularityGenerator.formatPick(result.unpopularityPick, 0));
+      console.log('  (Legacy pattern picks below are shown for comparison only -');
+      console.log('   validated to have no predictive power. Any combination');
+      console.log('   is equally likely to be drawn.)');
+    }
+    result.topPicks.forEach((pick, idx) => {
+      console.log(result.generator.formatPick(pick, idx + 1));
+    });
+  }
+
+  async fetchOnly(lotteryType = 'powerball', limit = 3000) {
     console.log(`Fetching data for ${lotteryType}...`);
     const data = await this.dataAcquisition.fetchAndSave(lotteryType, limit);
     console.log(`✓ Fetched and saved ${data.draws.length} draws`);
@@ -341,6 +368,8 @@ async function main() {
   const fetchFlag = args.includes('--fetch');
   const analyzeFlag = args.includes('--analyze');
   const scheduleFlag = args.includes('--schedule');
+  const jackpotIdx = args.indexOf('--jackpot');
+  const jackpot = jackpotIdx !== -1 ? parseFloat(args[jackpotIdx + 1]) : null;
 
   const automation = new LotteryAutomation();
 
@@ -352,7 +381,7 @@ async function main() {
     } else if (analyzeFlag) {
       await automation.analyzeOnly(lotteryType);
     } else {
-      await automation.run(lotteryType);
+      await automation.run(lotteryType, 3000, jackpot);
     }
   } catch (error) {
     console.error('Error:', error.message);
